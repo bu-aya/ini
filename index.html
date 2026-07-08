@@ -5,9 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistem Administrasi SDIT ANNIHAYAH</title>
     
-    <!-- Library CSS & Icons -->
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     
     <!-- Alpine.js (Harus dimuat setelah script logika di bawah atau menggunakan defer) -->
@@ -17,6 +19,11 @@
         [x-cloak] { display: none !important; }
         body { font-family: 'Inter', sans-serif; }
         @media print { .no-print { display: none !important; } }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #888; border-radius: 10px; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800" x-data="schoolApp" x-cloak>
@@ -33,7 +40,9 @@
             <div :class="notification.type === 'error' ? 'bg-rose-600' : 'bg-emerald-600'" 
                  class="text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 animate-bounce border-2 border-white/20">
                 <i class="fa-solid fa-circle-check text-xl"></i>
-                <p x-text="notification.message" class="font-bold text-sm"></p>
+                <div>
+                    <p x-text="notification.message" class="font-bold text-sm"></p>
+                </div>
             </div>
         </template>
     </div>
@@ -71,8 +80,8 @@
                 </div>
                 <div class="flex items-center gap-4">
                     <div class="text-right hidden md:block">
-                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Kepala Sekolah</p>
-                        <p class="text-sm font-bold text-slate-700 leading-none mt-1" x-text="settings.headmaster"></p>
+                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Admin Wilayah</p>
+                        <p class="text-sm font-bold text-slate-700 leading-none mt-1" x-text="settings.schoolName"></p>
                     </div>
                     <div class="w-12 h-12 bg-slate-800 rounded-2xl flex items-center justify-center text-white font-black shadow-lg transform rotate-3">AN</div>
                 </div>
@@ -85,7 +94,7 @@
                    <div class="bg-gradient-to-br from-blue-700 to-indigo-900 text-white p-12 rounded-[2.5rem] shadow-2xl relative overflow-hidden">
                        <div class="relative z-10">
                            <h3 class="text-4xl font-black mb-2 uppercase tracking-tighter">Ringkasan Madrasah</h3>
-                           <p class="opacity-70 text-sm font-medium max-w-md">Data tersinkronisasi otomatis dengan Google Spreadsheet secara real-time.</p>
+                           <p class="opacity-70 text-sm font-medium max-w-md">Data tersinkronisasi otomatis dengan Google Spreadsheet secara real-time untuk validitas administrasi.</p>
                        </div>
                        <i class="fa-solid fa-cloud absolute -right-10 -bottom-10 text-white/10 text-[15rem]"></i>
                    </div>
@@ -114,6 +123,7 @@
                 <div x-show="activeTab === 'siswa'" class="space-y-6">
                     <div class="flex justify-between items-center">
                         <h3 class="text-3xl font-black text-slate-800 tracking-tighter uppercase">Data Induk Siswa</h3>
+                        <button @click="notify('Gunakan Spreadsheet untuk menambah data siswa masal', 'error')" class="bg-blue-600 text-white px-8 py-3 rounded-2xl text-xs font-black shadow-xl shadow-blue-200 hover:bg-blue-700 transition-all active:scale-95 uppercase tracking-widest">Tambah Siswa</button>
                     </div>
                     <div class="bg-white rounded-[2rem] shadow-xl border border-slate-100 overflow-hidden">
                         <table class="w-full text-left">
@@ -146,6 +156,9 @@
                         </table>
                     </div>
                 </div>
+
+                <!-- TAB LAINNYA mengikuti struktur fitur awal -->
+
             </div>
         </main>
     </div>
@@ -154,22 +167,26 @@
         // MASUKKAN URL WEB APP GOOGLE APPS SCRIPT ANDA DI SINI
         const API_URL = "URL_WEB_APP_ANDA_DISINI";
 
-        // Perbaikan ReferenceError: Memastikan data terdaftar di Alpine sebelum init
+        // Inisialisasi Alpine.js Logic
         document.addEventListener('alpine:init', () => {
             Alpine.data('schoolApp', () => ({
                 activeTab: 'dashboard',
                 loading: false,
                 notification: null,
                 printPreview: false,
+                
+                // State Data
                 siswa: [],
                 nilai: [],
                 suratKeluar: [],
                 cptp: [],
+                
                 settings: { 
                     schoolName: "SDIT ANNIHAYAH", 
                     headmaster: "H. Ahmad Syafi'i, S.Pd.I., M.Pd.", 
                     activeYear: "2024/2025" 
                 },
+
                 menuItems: [
                     { id: 'dashboard', label: 'Dashboard', icon: 'fa-house' },
                     { id: 'siswa', label: 'Data Induk Siswa', icon: 'fa-users' },
@@ -178,49 +195,68 @@
                     { id: 'settings', label: 'Sistem', icon: 'fa-sliders' }
                 ],
 
+                // Lifecycle
                 async init() {
                     console.log("Inisialisasi Sistem...");
                     await this.fetchData();
                 },
 
+                // UI Helpers
                 notify(message, type = 'success') {
                     this.notification = { message, type };
                     setTimeout(() => this.notification = null, 4000);
                 },
 
+                // Database Engine
                 async fetchData() {
                     if (API_URL.includes("URL_WEB_APP")) {
-                        this.notify("URL API belum dikonfigurasi!", "error");
+                        this.notify("Peringatan: API URL Google Sheets belum dipasang!", "error");
                         return;
                     }
+                    
                     this.loading = true;
                     try {
                         const res = await fetch(API_URL);
                         const json = await res.json();
+                        
+                        // Mapping data dari Spreadsheet
                         this.siswa = json.Siswa || [];
                         this.nilai = json.Nilai || [];
                         this.suratKeluar = json.SuratKeluar || [];
                         this.cptp = json.CPTP || [];
-                        this.notify("Data berhasil disinkronkan dengan cloud.");
+                        
+                        this.notify("Cloud Database Terhubung");
                     } catch (e) {
-                        this.notify("Gagal Sinkronisasi Cloud", "error");
+                        this.notify("Koneksi Cloud Gagal", "error");
+                        console.error("Fetch Error:", e);
                     } finally {
                         this.loading = false;
                     }
                 },
 
                 async deleteData(sheetName, id) {
-                    if(!confirm("Hapus data dari pangkalan data cloud?")) return;
+                    if(!confirm("Hapus data dari pangkalan data cloud secara permanen?")) return;
+                    
                     this.loading = true;
                     try {
-                        await fetch(API_URL, {
+                        const res = await fetch(API_URL, {
                             method: "POST",
-                            body: JSON.stringify({ action: "delete", sheet: sheetName, data: { id: id } })
+                            body: JSON.stringify({
+                                action: "delete",
+                                sheet: sheetName,
+                                data: { id: id }
+                            })
                         });
-                        await this.fetchData();
-                        this.notify("Data berhasil dihapus.");
+                        const result = await res.json();
+                        
+                        if(result.status === "success") {
+                            await this.fetchData();
+                            this.notify("Data berhasil dihapus dari Cloud");
+                        } else {
+                            throw new Error(result.message);
+                        }
                     } catch (e) {
-                        this.notify("Gagal menghapus data.", "error");
+                        this.notify("Gagal menghapus data server", "error");
                     } finally {
                         this.loading = false;
                     }
