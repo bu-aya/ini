@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Administrasi SDIT ANNIHAYAH</title>
+    
+    <!-- Library CSS & Icons -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Alpine.js (Harus dimuat setelah script logika di bawah atau menggunakan defer) -->
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+    <style>
+        [x-cloak] { display: none !important; }
+        body { font-family: 'Inter', sans-serif; }
+        @media print { .no-print { display: none !important; } }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800" x-data="schoolApp" x-cloak>
+
+    <!-- LOADING OVERLAY -->
+    <div x-show="loading" class="fixed inset-0 z-[100] bg-white/90 flex flex-col items-center justify-center">
+        <div class="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+        <p class="font-black text-blue-600 animate-pulse uppercase tracking-widest">Sinkronisasi Cloud...</p>
+    </div>
+
+    <!-- NOTIFIKASI TOAST -->
+    <div class="fixed top-4 right-4 z-[110] space-y-2 no-print">
+        <template x-if="notification">
+            <div :class="notification.type === 'error' ? 'bg-rose-600' : 'bg-emerald-600'" 
+                 class="text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 animate-bounce border-2 border-white/20">
+                <i class="fa-solid fa-circle-check text-xl"></i>
+                <p x-text="notification.message" class="font-bold text-sm"></p>
+            </div>
+        </template>
+    </div>
+
+    <div class="flex min-h-screen no-print" x-show="!printPreview">
+        <!-- SIDEBAR -->
+        <aside class="w-64 bg-slate-900 text-slate-300 flex flex-col shrink-0 shadow-2xl">
+            <div class="p-8 border-b border-slate-800">
+                <h1 class="font-black text-white uppercase text-2xl tracking-tighter">ANNIHAYAH</h1>
+                <p class="text-[10px] text-slate-500 font-bold uppercase mt-1 tracking-widest">Digital Database</p>
+            </div>
+            <nav class="flex-1 p-4 space-y-1">
+                <template x-for="item in menuItems" :key="item.id">
+                    <button @click="activeTab = item.id"
+                            :class="activeTab === item.id ? 'bg-blue-600 text-white shadow-lg' : 'hover:bg-slate-800 text-slate-400 hover:text-white'"
+                            class="w-full flex items-center gap-3 px-4 py-4 rounded-2xl text-sm font-bold transition-all duration-300">
+                        <i :class="'fa-solid ' + item.icon + ' w-5 text-center text-lg'"></i>
+                        <span x-text="item.label"></span>
+                    </button>
+                </template>
+            </nav>
+            <div class="p-6 border-t border-slate-800">
+                <button @click="fetchData()" class="w-full py-3 bg-slate-800 rounded-xl text-xs font-black text-white hover:bg-blue-600 transition-all border border-slate-700 shadow-inner">
+                    <i class="fa-solid fa-rotate mr-2"></i> REFRESH DATA
+                </button>
+            </div>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <main class="flex-1 flex flex-col min-h-0 overflow-hidden">
+            <header class="bg-white border-b h-20 flex items-center justify-between px-10 shrink-0 shadow-sm">
+                <div class="flex items-center gap-6">
+                    <h2 class="text-2xl font-black text-slate-800 capitalize tracking-tight" x-text="activeTab"></h2>
+                    <span class="bg-blue-50 text-blue-600 text-[10px] font-black px-3 py-1.5 rounded-lg border border-blue-100 uppercase tracking-widest" x-text="'TA: ' + settings.activeYear"></span>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="text-right hidden md:block">
+                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Kepala Sekolah</p>
+                        <p class="text-sm font-bold text-slate-700 leading-none mt-1" x-text="settings.headmaster"></p>
+                    </div>
+                    <div class="w-12 h-12 bg-slate-800 rounded-2xl flex items-center justify-center text-white font-black shadow-lg transform rotate-3">AN</div>
+                </div>
+            </header>
+
+            <div class="p-10 overflow-y-auto flex-1 bg-slate-50">
+                
+                <!-- VIEW: DASHBOARD -->
+                <div x-show="activeTab === 'dashboard'" class="space-y-8 animate-fade-in">
+                   <div class="bg-gradient-to-br from-blue-700 to-indigo-900 text-white p-12 rounded-[2.5rem] shadow-2xl relative overflow-hidden">
+                       <div class="relative z-10">
+                           <h3 class="text-4xl font-black mb-2 uppercase tracking-tighter">Ringkasan Madrasah</h3>
+                           <p class="opacity-70 text-sm font-medium max-w-md">Data tersinkronisasi otomatis dengan Google Spreadsheet secara real-time.</p>
+                       </div>
+                       <i class="fa-solid fa-cloud absolute -right-10 -bottom-10 text-white/10 text-[15rem]"></i>
+                   </div>
+                   
+                   <div class="grid grid-cols-2 md:grid-cols-4 gap-8">
+                       <div class="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-100 hover:shadow-xl hover:-translate-y-1 transition-all group">
+                           <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest group-hover:text-blue-600 transition-colors">Total Siswa</p>
+                           <p class="text-5xl font-black text-slate-800 mt-2 tracking-tighter" x-text="siswa.length"></p>
+                       </div>
+                       <div class="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-100 hover:shadow-xl hover:-translate-y-1 transition-all group">
+                           <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest group-hover:text-emerald-600 transition-colors">Alumni Lulus</p>
+                           <p class="text-5xl font-black text-slate-800 mt-2 tracking-tighter" x-text="siswa.filter(s => s.status === 'Lulus').length"></p>
+                       </div>
+                       <div class="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-100 hover:shadow-xl hover:-translate-y-1 transition-all group">
+                           <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest group-hover:text-indigo-600 transition-colors">Surat Keluar</p>
+                           <p class="text-5xl font-black text-slate-800 mt-2 tracking-tighter" x-text="suratKeluar.length"></p>
+                       </div>
+                       <div class="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-100 hover:shadow-xl hover:-translate-y-1 transition-all group">
+                           <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest group-hover:text-orange-600 transition-colors">Total Mutasi</p>
+                           <p class="text-5xl font-black text-slate-800 mt-2 tracking-tighter" x-text="siswa.filter(s => s.status.includes('Mutasi')).length"></p>
+                       </div>
+                   </div>
+                </div>
+
+                <!-- VIEW: SISWA -->
+                <div x-show="activeTab === 'siswa'" class="space-y-6">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-3xl font-black text-slate-800 tracking-tighter uppercase">Data Induk Siswa</h3>
+                    </div>
+                    <div class="bg-white rounded-[2rem] shadow-xl border border-slate-100 overflow-hidden">
+                        <table class="w-full text-left">
+                            <thead class="bg-slate-50 text-[10px] font-black uppercase text-slate-400 border-b border-slate-100">
+                                <tr>
+                                    <th class="p-6">Nama Lengkap</th>
+                                    <th class="p-6 text-center">Kelas</th>
+                                    <th class="p-6 text-center">Status</th>
+                                    <th class="p-6 text-right">Manajemen</th>
+                                </tr>
+                            </thead>
+                            <tbody class="text-sm font-bold">
+                                <template x-for="s in siswa" :key="s.id">
+                                    <tr class="border-b border-slate-50 hover:bg-slate-50/80 transition-all group">
+                                        <td class="p-6">
+                                            <p class="text-slate-800 group-hover:text-blue-600 transition-colors" x-text="s.nama"></p>
+                                            <p class="text-[10px] text-slate-400 font-medium" x-text="'NIS: ' + s.nis + ' | NISN: ' + s.nisn"></p>
+                                        </td>
+                                        <td class="p-6 text-center text-slate-500" x-text="s.kelas"></td>
+                                        <td class="p-6 text-center">
+                                            <span :class="s.status === 'Lulus' ? 'bg-purple-100 text-purple-700 border-purple-200' : 'bg-emerald-100 text-emerald-700 border-emerald-200'" 
+                                                  class="px-4 py-1.5 rounded-xl text-[10px] font-black uppercase border" x-text="s.status"></span>
+                                        </td>
+                                        <td class="p-6 text-right">
+                                            <button @click="deleteData('Siswa', s.id)" class="w-10 h-10 rounded-xl bg-rose-50 text-rose-400 hover:bg-rose-600 hover:text-white transition-all shadow-sm"><i class="fa-solid fa-trash-can"></i></button>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // MASUKKAN URL WEB APP GOOGLE APPS SCRIPT ANDA DI SINI
+        const API_URL = "URL_WEB_APP_ANDA_DISINI";
+
+        // Perbaikan ReferenceError: Memastikan data terdaftar di Alpine sebelum init
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('schoolApp', () => ({
+                activeTab: 'dashboard',
+                loading: false,
+                notification: null,
+                printPreview: false,
+                siswa: [],
+                nilai: [],
+                suratKeluar: [],
+                cptp: [],
+                settings: { 
+                    schoolName: "SDIT ANNIHAYAH", 
+                    headmaster: "H. Ahmad Syafi'i, S.Pd.I., M.Pd.", 
+                    activeYear: "2024/2025" 
+                },
+                menuItems: [
+                    { id: 'dashboard', label: 'Dashboard', icon: 'fa-house' },
+                    { id: 'siswa', label: 'Data Induk Siswa', icon: 'fa-users' },
+                    { id: 'nilai', label: 'E-Rapor', icon: 'fa-book-open' },
+                    { id: 'surat', label: 'Persuratan Keluar', icon: 'fa-paper-plane' },
+                    { id: 'settings', label: 'Sistem', icon: 'fa-sliders' }
+                ],
+
+                async init() {
+                    console.log("Inisialisasi Sistem...");
+                    await this.fetchData();
+                },
+
+                notify(message, type = 'success') {
+                    this.notification = { message, type };
+                    setTimeout(() => this.notification = null, 4000);
+                },
+
+                async fetchData() {
+                    if (API_URL.includes("URL_WEB_APP")) {
+                        this.notify("URL API belum dikonfigurasi!", "error");
+                        return;
+                    }
+                    this.loading = true;
+                    try {
+                        const res = await fetch(API_URL);
+                        const json = await res.json();
+                        this.siswa = json.Siswa || [];
+                        this.nilai = json.Nilai || [];
+                        this.suratKeluar = json.SuratKeluar || [];
+                        this.cptp = json.CPTP || [];
+                        this.notify("Data berhasil disinkronkan dengan cloud.");
+                    } catch (e) {
+                        this.notify("Gagal Sinkronisasi Cloud", "error");
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+
+                async deleteData(sheetName, id) {
+                    if(!confirm("Hapus data dari pangkalan data cloud?")) return;
+                    this.loading = true;
+                    try {
+                        await fetch(API_URL, {
+                            method: "POST",
+                            body: JSON.stringify({ action: "delete", sheet: sheetName, data: { id: id } })
+                        });
+                        await this.fetchData();
+                        this.notify("Data berhasil dihapus.");
+                    } catch (e) {
+                        this.notify("Gagal menghapus data.", "error");
+                    } finally {
+                        this.loading = false;
+                    }
+                }
+            }));
+        });
+    </script>
+</body>
+</html>
